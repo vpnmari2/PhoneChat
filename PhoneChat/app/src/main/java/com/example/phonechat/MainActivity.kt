@@ -379,8 +379,18 @@ class MainActivity : Activity() {
         startActivity(
             Intent(this, ViewerActivity::class.java)
                 .putExtra("path", m.path).putExtra("name", m.name)
-                .putExtra("kind", m.kind).putExtra("mime", m.mime)
+                .putExtra("kind", m.kind).putExtra("mime", m.mime).putExtra("id", m.id)
         )
+    }
+
+    private fun confirmDelete(m: Msg) {
+        val what = if (m.isFile) "\"${m.name}\"" else "this message"
+        AlertDialog.Builder(this)
+            .setTitle("Delete?")
+            .setMessage("Delete $what from this chat and from the phone? Your PC keeps any copy it already saved.")
+            .setPositiveButton("Delete") { _, _ -> Thread { ChatStore.delete(m.id) }.start() }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     // ------------------------------------------------------------------ adapters
@@ -425,6 +435,7 @@ class MainActivity : Activity() {
             } else {
                 bubble.addView(tv(m.text, 16f, fg).apply { maxWidth = maxW })
             }
+            bubble.setOnLongClickListener { confirmDelete(m); true }
             row.addView(bubble, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT))
             row.addView(tv(timeFmt.format(Date(m.ts)), 10f, Color.GRAY).apply {
                 setPadding(dp(6), dp(2), dp(6), 0)
@@ -448,6 +459,7 @@ class MainActivity : Activity() {
                 layoutParams = AbsListView.LayoutParams(size, size)
                 setPadding(2, 2, 2, 2)
                 setOnClickListener { openViewer(m) }
+                setOnLongClickListener { confirmDelete(m); true }
             }
             if (kind == "image" || kind == "video") {
                 val iv = ImageView(this@MainActivity).apply {

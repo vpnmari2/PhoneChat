@@ -1,6 +1,7 @@
 package com.example.phonechat
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Color
@@ -30,6 +31,7 @@ class ViewerActivity : Activity() {
         val name = intent.getStringExtra("name") ?: "file"
         val kind = intent.getStringExtra("kind") ?: "other"
         val mime = intent.getStringExtra("mime")
+        val msgId = intent.getLongExtra("id", -1L)
         if (path == null || !File(path).isFile) {
             Toast.makeText(this, "File not found", Toast.LENGTH_SHORT).show()
             finish()
@@ -63,6 +65,13 @@ class ViewerActivity : Activity() {
             isAllCaps = false
             setOnClickListener { saveToPhone(f, name, mime, kind) }
         })
+        if (msgId > 0) {
+            bar.addView(Button(this).apply {
+                text = "Delete"
+                isAllCaps = false
+                setOnClickListener { confirmDelete(msgId) }
+            })
+        }
         root.addView(bar)
 
         val body = FrameLayout(this)
@@ -101,6 +110,20 @@ class ViewerActivity : Activity() {
             }
         }
         setContentView(root)
+    }
+
+    private fun confirmDelete(id: Long) {
+        AlertDialog.Builder(this)
+            .setTitle("Delete this file?")
+            .setMessage("It is removed from this chat and from the phone. Your PC keeps any copy it already saved.")
+            .setPositiveButton("Delete") { _, _ ->
+                Thread {
+                    ChatStore.delete(id)
+                    runOnUiThread { finish() }
+                }.start()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun saveToPhone(f: File, name: String, mime: String?, kind: String) {

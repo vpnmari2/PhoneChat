@@ -23,6 +23,7 @@ import java.util.concurrent.Executors
  *   GET  /ping
  *   GET  /messages?after=ID&wait=SECONDS   (long poll, new messages)
  *   POST /message                          {"text": "..."}
+ *   DELETE /message?id=MSGID               (removes the message and its file)
  *   PUT  /file?up=UPLOADID&name=..&mime=.. (raw bytes; X-Offset resumes)  -> creates a file message
  *   GET  /partial?up=UPLOADID              (bytes already received + free space)
  *   GET  /file?id=MSGID                    (raw bytes; Range resumes)
@@ -114,6 +115,7 @@ class ChatServer(
 
         when {
             method == "GET" && route == "/messages" -> messages(out, query)
+            method == "DELETE" && route == "/message" -> deleteMessage(out, query)
             method == "POST" && route == "/message" -> postMessage(input, out, headers)
             method == "GET" && route == "/partial" -> partial(out, query)
             method == "PUT" && route == "/file" -> upload(input, out, query, headers)
@@ -176,6 +178,15 @@ class ChatServer(
         val arr = JSONArray()
         list.forEach { arr.put(it.toJson(false)) }
         json(out, 200, JSONObject().put("messages", arr).put("last", ChatStore.lastId()))
+    }
+
+    private fun deleteMessage(out: OutputStream, q: Map<String, String>) {
+        val id = q["id"]?.toLongOrNull()
+        if (id == null || !ChatStore.delete(id)) {
+            json(out, 404, err("No such message"))
+            return
+        }
+        json(out, 200, JSONObject().put("ok", true))
     }
 
     private fun postMessage(input: InputStream, out: OutputStream, headers: Map<String, String>) {
